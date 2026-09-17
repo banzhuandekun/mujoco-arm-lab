@@ -18,6 +18,24 @@
 | 最差末端误差 | 0.49 cm |
 | 平均收敛耗时 | 2.74 s（仿真时间） |
 
+### 换个工况，成功率掉 17 个百分点
+
+上面那个 100% 有个隐含前提：**每个目标点都从初始姿态重新开始**。
+改成连续作业、不重置姿态（`03_interactive_viewer.py` 的场景）后：
+
+| 指标 | 逐轮重置（02） | 连续作业（03） |
+|---|---|---|
+| 成功率 | 100%（50/50） | **82.8%**（303/366） |
+| 平均末端误差 | 0.34 cm | 0.40 cm |
+| 平均收敛耗时 | 2.74 s | 1.80 s |
+
+20 分钟仿真时间的统计结果。失败的 63 次全部是「超时」而不是「走得不够准」：
+机械臂从上一个目标点的姿态出发时，会陷在局部极小或贴住关节限位附近出不来，
+单目标超过 8 s 就换下一个。
+
+**同一个控制器，只因评测工况不同，成功率就从 100% 掉到 83%。**
+所以报成功率时必须写清「是否每轮重置」，否则数字没有可比性 —— 这是做 benchmark 最容易踩的坑之一。
+
 ## 快速开始
 
 ```powershell
@@ -33,6 +51,9 @@ python -m venv .venv --system-site-packages
 # 只跑评测不录视频，快很多
 .\.venv\Scripts\python.exe 02_reach_target.py --n-eval 100 --no-video
 
+# 第三步：弹出 3D 窗口实时看（鼠标左键转视角、滚轮缩放，连续作业模式）
+.\.venv\Scripts\python.exe 03_interactive_viewer.py
+
 # 把视频转成 GIF（README 用）
 .\.venv\Scripts\python.exe make_gif.py
 ```
@@ -41,11 +62,13 @@ python -m venv .venv --system-site-packages
 
 ```
 mujoco-arm-lab/
-├── models/arm3dof.xml      # 机械臂模型：关节、连杆、执行器、目标点
-├── 01_first_motion.py      # 关节空间正弦轨迹，验证渲染链路
-├── 02_reach_target.py      # DLS 逆运动学控制器 + 批量评测 + 录制
-├── make_gif.py             # mp4 → gif（GitHub README 不能直接播放 mp4）
-└── outputs/                # 生成的 mp4 / gif / png
+├── models/arm3dof.xml          # 机械臂模型：关节、连杆、执行器、目标点
+├── arm_control.py              # 控制核心：目标点采样 + DLS 逆运动学（三个脚本共用）
+├── 01_first_motion.py          # 关节空间正弦轨迹，验证渲染链路
+├── 02_reach_target.py          # 批量评测 + 录制演示（逐轮重置姿态）
+├── 03_interactive_viewer.py    # 交互式 3D 窗口，连续作业模式
+├── make_gif.py                 # mp4 → gif（GitHub README 不能直接播放 mp4）
+└── outputs/                    # 生成的 mp4 / gif / png
 ```
 
 ## 技术要点
@@ -88,6 +111,7 @@ dq = Jᵀ (J Jᵀ + λ² I)⁻¹ · err
 
 - [x] 自建三自由度机械臂模型 + 渲染链路
 - [x] DLS 逆运动学到达随机目标点（成功率 100%，平均误差 0.34 cm）
+- [x] 交互式查看器 + 连续作业工况评测（暴露 82.8% 的真实成功率）
 - [ ] 场景加入障碍物，从「够到点」推进到「避障够到点」
 - [ ] 替换为 MuJoCo Menagerie 的真实机型（UR5e / Franka Panda）
 - [ ] 接入 Gymnasium + stable-baselines3，用 PPO 训练并与 IK 基线对比
