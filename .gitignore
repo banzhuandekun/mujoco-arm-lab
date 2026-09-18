@@ -1,3 +1,7 @@
 .venv/
 __pycache__/
 *.pyc
+
+# 强化学习训练出来的中间模型（体积不小，而且没收敛，不进仓库）
+outputs/ppo_arm*.zip
+outputs/sac_arm*.zip

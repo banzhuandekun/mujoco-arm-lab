@@ -55,8 +55,11 @@ class Reacher:
             mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)
             for name in ("yaw", "shoulder", "elbow")
         ]
+        self.joint_ids = joint_ids
         # q_idx：三个关节角在 qpos 里的下标；执行器顺序和它们一致
         self.q_idx = np.array([self.model.jnt_qposadr[j] for j in joint_ids])
+        # d_idx：三个关节角速度在 qvel 里的下标（强化学习环境要观测速度）
+        self.d_idx = np.array([self.model.jnt_dofadr[j] for j in joint_ids])
         self.q_lo = self.model.jnt_range[joint_ids, 0].copy()
         self.q_hi = self.model.jnt_range[joint_ids, 1].copy()
 
