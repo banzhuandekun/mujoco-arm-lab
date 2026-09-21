@@ -18,6 +18,17 @@ import numpy as np
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(ROOT, "models", "arm3dof.xml")
 
+
+def load_model(path=MODEL_PATH):
+    """读取 MJCF 并建模型。
+
+    不用 from_xml_path：MuJoCo 的 C++ 解析器在 Windows 上处理不了含非 ASCII
+    字符的路径（项目放在「桌面缓存\乱七八糟\项目」这类中文目录下会直接报
+    Error opening file），改由 Python 读文件内容再交给 from_xml_string。
+    """
+    with open(path, "rb") as f:
+        return mujoco.MjModel.from_xml_string(f.read())
+
 IK_EVERY = 5        # 每 5 个仿真步解一次 IK（相当于 100 Hz 控制频率）
 MAX_DQ = 0.01       # 单次 IK 每个关节最多走 0.01 rad
 LAMBDA = 0.05       # 阻尼系数，防止奇异位形附近解爆掉
@@ -44,7 +55,7 @@ class Reacher:
     """三自由度机械臂 + DLS 逆运动学控制器"""
 
     def __init__(self):
-        self.model = mujoco.MjModel.from_xml_path(MODEL_PATH)
+        self.model = load_model()
         self.data = mujoco.MjData(self.model)
 
         self.site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "ee")

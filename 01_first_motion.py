@@ -16,6 +16,8 @@ import imageio.v2 as imageio
 import mujoco
 import numpy as np
 
+from arm_control import load_model
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(ROOT, "models", "arm3dof.xml")
 OUT_DIR = os.path.join(ROOT, "outputs")
@@ -38,7 +40,7 @@ def make_camera(model):
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
 
-    model = mujoco.MjModel.from_xml_path(MODEL_PATH)
+    model = load_model(MODEL_PATH)
     data = mujoco.MjData(model)
     print(f"[模型] 自由度 nv={model.nv}，关节数 njnt={model.njnt}，执行器 nu={model.nu}")
     print(f"[模型] 仿真步长 dt={model.opt.timestep}s，物理频率 {1 / model.opt.timestep:.0f} Hz")
