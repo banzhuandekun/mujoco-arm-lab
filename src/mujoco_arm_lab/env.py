@@ -33,7 +33,7 @@ import mujoco
 import numpy as np
 from gymnasium import spaces
 
-from arm_control import IK_EVERY, TOL, Reacher, sample_target
+from .control import IK_EVERY, TOL, Reacher, sample_target
 
 ACTION_REPEAT = IK_EVERY      # 每个决策对应的仿真步数
 MAX_ACTION_DQ = 0.02          # action = 1.0 时每个关节的最大增量（rad）
@@ -58,6 +58,10 @@ class ArmReachEnv(gym.Env):
 
     def __init__(self, seed=None, progress_scale=None, time_penalty=None,
                  reach_bonus=None):
+        """创建环境并允许覆盖奖励尺度。
+
+        ``seed`` 只设置初始随机数生成器；调用 ``reset(seed=...)`` 可以再次重置。
+        """
         super().__init__()
         self.reacher = Reacher()
         self.model = self.reacher.model
@@ -79,17 +83,20 @@ class ArmReachEnv(gym.Env):
     # ---------- 内部工具 ----------
 
     def _raw_obs(self):
+        """返回未缩放的关节状态、目标向量与末端距离。"""
         q = self.data.qpos[self.reacher.q_idx]
         qd = self.data.qvel[self.reacher.d_idx]
         delta = self.target - self.reacher.ee_pos
         return np.concatenate([q, qd, delta, [np.linalg.norm(delta)]])
 
     def _obs(self):
+        """按固定尺度归一化观测，并转换成 Gymnasium 要求的 float32。"""
         return (self._raw_obs() / OBS_SCALE).astype(np.float32)
 
     # ---------- Gymnasium 接口 ----------
 
     def reset(self, *, seed=None, options=None):
+        """重置机械臂，并随机采样目标或使用 ``options["target"]``。"""
         super().reset(seed=seed)
         if seed is not None:
             self.rng = np.random.default_rng(seed)
@@ -105,6 +112,7 @@ class ArmReachEnv(gym.Env):
         return self._obs(), {}
 
     def step(self, action):
+        """执行一个归一化关节增量动作，返回五元组环境结果。"""
         action = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
 
         prev_dist = self.reacher.error_to(self.target)
@@ -132,4 +140,5 @@ class ArmReachEnv(gym.Env):
         return self._obs(), float(reward), terminated, truncated, info
 
     def render(self):
-        raise NotImplementedError("这个环境不做渲染，要看画面请用 02 或 03")
+        """拒绝渲染；本项目把可视化集中在演示脚本和交互查看器中。"""
+        raise NotImplementedError("这个环境不做渲染，要看画面请用 scripts/02 或 scripts/03")

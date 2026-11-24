@@ -11,23 +11,22 @@
 IK 每步都要解雅可比方程，BC 只是一次神经网络前向。
 
 运行：
-    .\\.venv\\Scripts\\python.exe 05_compare.py
-    .\\.venv\\Scripts\\python.exe 05_compare.py --n-eval 100
+    .\\.venv\\Scripts\\python.exe scripts\\05_compare.py
+    .\\.venv\\Scripts\\python.exe scripts\\05_compare.py --n-eval 100
 """
 
 import argparse
-import os
 import time
 
 import mujoco
 import numpy as np
 
-from arm_bc import BCPolicy
-from arm_control import LAMBDA, TOL, Reacher, sample_target
-from arm_env import ACTION_REPEAT, ArmReachEnv
+from mujoco_arm_lab.bc import BCPolicy
+from mujoco_arm_lab.control import LAMBDA, TOL, Reacher, sample_target
+from mujoco_arm_lab.env import ACTION_REPEAT, ArmReachEnv
+from mujoco_arm_lab.paths import OUTPUTS_DIR
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-BC_MODEL = os.path.join(ROOT, "outputs", "bc_policy.pt")
+BC_MODEL = OUTPUTS_DIR / "bc_policy.pt"
 TIME_BUDGET = 8.0   # s，单目标的时间上限，和 02 里 IK 的 MAX_STEPS 一致
 
 
@@ -38,6 +37,7 @@ def make_targets(n, seed):
 
 
 def eval_ik(targets):
+    """在给定目标序列上运行 DLS-IK，返回末端误差与耗时数组。"""
     reacher = Reacher()
     dt = reacher.model.opt.timestep
     errors, durations = [], []
@@ -91,6 +91,7 @@ def time_policy_step(policy, n=2000):
 
 
 def make_row(name, errors, durations, step_us):
+    """把一种方法的原始结果格式化为终端对比表的一行。"""
     success = errors < TOL
     return {
         "method": name,
@@ -104,13 +105,16 @@ def make_row(name, errors, durations, step_us):
 
 
 def main():
+    """加载 BC 模型，在同一批目标上比较 IK 与神经网络策略。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--n-eval", type=int, default=50)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
-    if not os.path.exists(BC_MODEL):
-        raise SystemExit("找不到 BC 模型 {}，先跑 06_train_bc.py 训练一个".format(BC_MODEL))
+    if not BC_MODEL.exists():
+        raise SystemExit(
+            "找不到 BC 模型 {}，先跑 scripts\\06_train_bc.py 训练一个".format(BC_MODEL)
+        )
 
     targets = make_targets(args.n_eval, args.seed)
     print("评测 {} 个随机目标点（随机种子 {}）".format(args.n_eval, args.seed))

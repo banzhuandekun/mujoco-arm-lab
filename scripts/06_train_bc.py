@@ -8,15 +8,14 @@
   4. 评测
 
 第 2 步是关键：不加扰动只能到 62%，加了扰动能到 98%。
-原因见 arm_bc.py 里的说明。
+原因见 ``mujoco_arm_lab.bc`` 里的说明。
 
 运行：
-    .\\.venv\\Scripts\\python.exe 06_train_bc.py
-    .\\.venv\\Scripts\\python.exe 06_train_bc.py --episodes 150 --epochs 90   # 快速试跑
+    .\\.venv\\Scripts\\python.exe scripts\\06_train_bc.py
+    .\\.venv\\Scripts\\python.exe scripts\\06_train_bc.py --episodes 150 --epochs 90
 """
 
 import argparse
-import os
 import time
 
 import mujoco
@@ -24,13 +23,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from arm_bc import BCPolicy, BCPolicyNet
-from arm_control import LAMBDA, MAX_DQ, TOL, sample_target
-from arm_env import ACTION_REPEAT, MAX_ACTION_DQ, ArmReachEnv
+from mujoco_arm_lab.bc import BCPolicy, BCPolicyNet
+from mujoco_arm_lab.control import LAMBDA, MAX_DQ, TOL, sample_target
+from mujoco_arm_lab.env import ACTION_REPEAT, MAX_ACTION_DQ, ArmReachEnv
+from mujoco_arm_lab.paths import OUTPUTS_DIR
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(ROOT, "outputs")
-MODEL_PATH = os.path.join(OUT_DIR, "bc_policy.pt")
+MODEL_PATH = OUTPUTS_DIR / "bc_policy.pt"
 
 
 def ik_action(env, target):
@@ -76,6 +74,7 @@ def collect(episodes, seed, perturb_prob=0.15, perturb_std=0.08):
 
 
 def train(X, Y, epochs, batch_size=256, lr=1e-3, seed=0):
+    """用 MSE 监督训练 MLP，并返回训练完成的网络。"""
     torch.manual_seed(seed)
     net = BCPolicyNet()
     opt = torch.optim.Adam(net.parameters(), lr=lr)
@@ -101,6 +100,7 @@ def train(X, Y, epochs, batch_size=256, lr=1e-3, seed=0):
 
 
 def evaluate(policy, n_eval=50, seed=0):
+    """在独立随机目标上运行策略，返回每个目标的最终误差。"""
     env = ArmReachEnv()
     rng = np.random.default_rng(seed)
     errors = []
@@ -117,6 +117,7 @@ def evaluate(policy, n_eval=50, seed=0):
 
 
 def main():
+    """依次采集专家数据、训练 BC 网络并运行独立评测。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--episodes", type=int, default=300, help="专家轨迹条数")
     parser.add_argument("--epochs", type=int, default=180)
@@ -125,7 +126,7 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
-    os.makedirs(OUT_DIR, exist_ok=True)
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=== 1/3 采集专家数据（含扰动）===")
     t0 = time.time()
@@ -146,7 +147,7 @@ def main():
     print(f"  成功率   : {success.sum()}/{len(errors)} = {success.mean() * 100:.1f}%")
     print(f"  平均误差 : {errors.mean() * 100:.2f} cm")
     print(f"  最差误差 : {errors.max() * 100:.2f} cm")
-    print("\n下一步：跑 05_compare.py 看它和 IK 的对比")
+    print("\n下一步：跑 scripts\\05_compare.py 看它和 IK 的对比")
 
 
 if __name__ == "__main__":

@@ -5,18 +5,16 @@
 想让访客一打开仓库就看到机械臂在动，得用 GIF。
 
 运行：
-    .\\.venv\\Scripts\\python.exe make_gif.py
+    .\\.venv\\Scripts\\python.exe tools\\make_gif.py
 
 ffmpeg 由 imageio-ffmpeg 自带，不需要另外安装。
 """
 
-import os
 import subprocess
 
 import imageio_ffmpeg
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(ROOT, "outputs")
+from mujoco_arm_lab.paths import OUTPUTS_DIR
 
 # (源视频, 目标 GIF, 帧率, 宽度)
 JOBS = [
@@ -39,15 +37,16 @@ def convert(ffmpeg, src, dst, fps, width):
 
 
 def main():
+    """把已存在的演示视频批量转换成 README 可播放的 GIF。"""
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     for src_name, dst_name, fps, width in JOBS:
-        src = os.path.join(OUT_DIR, src_name)
-        dst = os.path.join(OUT_DIR, dst_name)
-        if not os.path.exists(src):
+        src = OUTPUTS_DIR / src_name
+        dst = OUTPUTS_DIR / dst_name
+        if not src.exists():
             print(f"[跳过] 找不到 {src_name}，请先跑对应的脚本")
             continue
         convert(ffmpeg, src, dst, fps, width)
-        print(f"[输出] {dst_name}  {os.path.getsize(dst) / 1024:.0f} KB")
+        print(f"[输出] {dst_name}  {dst.stat().st_size / 1024:.0f} KB")
 
 
 if __name__ == "__main__":

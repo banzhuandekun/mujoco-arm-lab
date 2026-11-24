@@ -7,20 +7,15 @@
   3. 把画面渲染成 MP4，并存一张 PNG
 
 运行：
-    .\\.venv\\Scripts\\python.exe 01_first_motion.py
+    .\\.venv\\Scripts\\python.exe scripts\\01_first_motion.py
 """
-
-import os
 
 import imageio.v2 as imageio
 import mujoco
 import numpy as np
 
-from arm_control import load_model
-
-ROOT = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(ROOT, "models", "arm3dof.xml")
-OUT_DIR = os.path.join(ROOT, "outputs")
+from mujoco_arm_lab.control import load_model
+from mujoco_arm_lab.paths import DEFAULT_MODEL_PATH, OUTPUTS_DIR
 
 FPS = 30
 RENDER_EVERY = 16  # 每 16 个仿真步渲染一帧 = 0.032 s，接近实时
@@ -38,9 +33,10 @@ def make_camera(model):
 
 
 def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
+    """生成正弦关节轨迹，并导出 MP4、PNG 和最终末端位置。"""
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    model = load_model(MODEL_PATH)
+    model = load_model(DEFAULT_MODEL_PATH)
     data = mujoco.MjData(model)
     print(f"[模型] 自由度 nv={model.nv}，关节数 njnt={model.njnt}，执行器 nu={model.nu}")
     print(f"[模型] 仿真步长 dt={model.opt.timestep}s，物理频率 {1 / model.opt.timestep:.0f} Hz")
@@ -65,9 +61,9 @@ def main():
             frames.append(renderer.render().copy())
 
     ee_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "ee")
-    video_path = os.path.join(OUT_DIR, "01_first_motion.mp4")
+    video_path = OUTPUTS_DIR / "01_first_motion.mp4"
     imageio.mimsave(video_path, frames, fps=FPS, macro_block_size=None)
-    imageio.imwrite(os.path.join(OUT_DIR, "01_first_motion.png"), frames[len(frames) // 2])
+    imageio.imwrite(OUTPUTS_DIR / "01_first_motion.png", frames[len(frames) // 2])
 
     print(f"[输出] {len(frames)} 帧 -> {video_path}")
     print(f"[输出] 末端最终位置 = {np.round(data.site_xpos[ee_id], 3)}")

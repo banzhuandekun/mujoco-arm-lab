@@ -9,25 +9,22 @@
   --timesteps 200000   默认，效果比较稳
 
 运行：
-    .\\.venv\\Scripts\\python.exe 04_train_ppo.py
-    .\\.venv\\Scripts\\python.exe 04_train_ppo.py --timesteps 50000
+    .\\.venv\\Scripts\\python.exe experiments\\rl\\04_train_ppo.py
+    .\\.venv\\Scripts\\python.exe experiments\\rl\\04_train_ppo.py --timesteps 50000
 """
 
 import argparse
-import os
 import time
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from arm_env import ArmReachEnv
-
-ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(ROOT, "outputs")
-MODEL_PATH = os.path.join(OUT_DIR, "ppo_arm.zip")
+from mujoco_arm_lab.env import ArmReachEnv
+from mujoco_arm_lab.paths import OUTPUTS_DIR
 
 
 def main():
+    """解析 PPO 参数，训练模型并保存到仓库的 ``outputs`` 目录。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--timesteps", type=int, default=200_000, help="总训练步数")
     parser.add_argument("--seed", type=int, default=0)
@@ -37,7 +34,7 @@ def main():
     parser.add_argument("--name", type=str, default="ppo_arm", help="模型文件名（不含扩展名）")
     args = parser.parse_args()
 
-    os.makedirs(OUT_DIR, exist_ok=True)
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
     env = DummyVecEnv([lambda: ArmReachEnv(seed=args.seed)])
 
     model = PPO(
@@ -59,12 +56,12 @@ def main():
     model.learn(total_timesteps=args.timesteps)
     elapsed = time.time() - t0
 
-    path = os.path.join(OUT_DIR, f"{args.name}.zip")
+    path = OUTPUTS_DIR / f"{args.name}.zip"
     model.save(path)
     print(f"\n训练完成：{args.timesteps} 步，用时 {elapsed / 60:.1f} 分钟"
           f"（{args.timesteps / elapsed:.0f} 步/秒）")
     print(f"模型已保存到 {path}")
-    print("\n下一步：跑 05_compare.py 看它和 IK 的对比结果")
+    print("\n下一步：跑 scripts\\05_compare.py 看它和 IK 的对比结果")
 
 
 if __name__ == "__main__":

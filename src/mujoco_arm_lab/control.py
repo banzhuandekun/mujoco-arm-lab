@@ -1,7 +1,7 @@
-"""
-机械臂控制核心 —— 目标点采样 + 阻尼最小二乘逆运动学（DLS-IK）。
+"""机械臂控制核心：目标点采样与 DLS 逆运动学。
 
-01 / 02 / 03 三个脚本共用这里的 Reacher，避免同一套控制逻辑抄三遍。
+``Reacher`` 同时供演示脚本、强化学习环境和评测代码复用。目标点采样与到达
+判定也在这里统一定义，避免不同入口使用不同口径。
 
 下面这些参数是实测扫出来的，两条结论都反直觉，改之前先看一眼：
   - 单步增量要「小」：MAX_DQ 从 0.01 放大到 0.03，成功率从 100% 掉到 92%，
@@ -10,16 +10,16 @@
     同样是「指令跑在伺服前面」导致超调。
 """
 
-import os
-
 import mujoco
 import numpy as np
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(ROOT, "models", "arm3dof.xml")
+from .paths import DEFAULT_MODEL_PATH
+
+# 保留旧名称，外部脚本从模型常量迁移到包接口时不必立刻全部改名。
+MODEL_PATH = DEFAULT_MODEL_PATH
 
 
-def load_model(path=MODEL_PATH):
+def load_model(path=DEFAULT_MODEL_PATH):
     """读取 MJCF 并建模型。
 
     不用 from_xml_path：MuJoCo 的 C++ 解析器在 Windows 上处理不了含非 ASCII
@@ -41,7 +41,10 @@ SHOULDER_PIVOT = np.array([0.0, 0.0, 0.10])
 
 
 def sample_target(rng, min_reach=0.18, max_reach=0.66):
-    """在可达的空心球壳内随机采一个目标点（世界坐标）"""
+    """在可达球壳内随机采样目标点，返回世界坐标。
+
+    ``min_reach`` 与 ``max_reach`` 按肩关节枢轴到目标点的距离筛选样本。
+    """
     while True:
         r = rng.uniform(0.20, 0.60)
         theta = rng.uniform(-np.pi, np.pi)
@@ -54,8 +57,12 @@ def sample_target(rng, min_reach=0.18, max_reach=0.66):
 class Reacher:
     """三自由度机械臂 + DLS 逆运动学控制器"""
 
-    def __init__(self):
-        self.model = load_model()
+    def __init__(self, model_path=MODEL_PATH):
+        """加载模型并缓存关节、执行器和末端等常用索引。
+
+        ``model_path`` 可覆盖默认 MJCF，障碍场景会借此复用同一控制器。
+        """
+        self.model = load_model(model_path)
         self.data = mujoco.MjData(self.model)
 
         self.site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "ee")

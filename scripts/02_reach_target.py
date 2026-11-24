@@ -1,7 +1,7 @@
 """
 02 — 末端到达目标点：批量评测 + 录制演示
 
-控制逻辑（DLS 逆运动学）在 arm_control.py，这个脚本只负责：
+控制逻辑（DLS 逆运动学）在 ``mujoco_arm_lab.control``，这个脚本只负责：
   1. 随机采 n 个目标点，统计到达成功率
   2. 录几段「够到目标点」的连续画面拼成 MP4
 
@@ -9,27 +9,24 @@
 误差 < 5 mm 判定为「到达」。
 
 运行：
-    .\\.venv\\Scripts\\python.exe 02_reach_target.py
-    .\\.venv\\Scripts\\python.exe 02_reach_target.py --n-eval 50 --no-video
+    .\\.venv\\Scripts\\python.exe scripts\\02_reach_target.py
+    .\\.venv\\Scripts\\python.exe scripts\\02_reach_target.py --n-eval 50 --no-video
 """
 
 import argparse
-import os
 
 import imageio.v2 as imageio
 import mujoco
 import numpy as np
 
-from arm_control import MODEL_PATH, TOL, Reacher, sample_target
-
-ROOT = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(ROOT, "outputs")
+from mujoco_arm_lab.control import TOL, Reacher, sample_target
+from mujoco_arm_lab.paths import OUTPUTS_DIR
 
 FPS = 30
 
 
 def evaluate(n, seed=0):
-    """批量评测：随机采 n 个目标点，统计到达成功率"""
+    """随机采样 ``n`` 个目标，打印逐轮结果并返回到达成功率。"""
     rng = np.random.default_rng(seed)
     reacher = Reacher()
     dt = reacher.model.opt.timestep
@@ -77,22 +74,23 @@ def record_video(path, n=3, seed=1):
 
 
 def main():
+    """解析评测参数，按需运行统计评测和演示视频录制。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--n-eval", type=int, default=30, help="评测用的随机目标点数量")
     parser.add_argument("--seed", type=int, default=0, help="随机种子")
     parser.add_argument("--no-video", action="store_true", help="只评测，不录视频")
     args = parser.parse_args()
 
-    os.makedirs(OUT_DIR, exist_ok=True)
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=== 批量评测：随机目标点到达 ===")
     evaluate(args.n_eval, seed=args.seed)
 
     if not args.no_video:
         print("\n=== 录制演示视频 ===")
-        video_path = os.path.join(OUT_DIR, "02_reach_target.mp4")
+        video_path = OUTPUTS_DIR / "02_reach_target.mp4"
         frames = record_video(video_path, n=3, seed=args.seed + 1)
-        imageio.imwrite(os.path.join(OUT_DIR, "02_reach_target.png"), frames[-1])
+        imageio.imwrite(OUTPUTS_DIR / "02_reach_target.png", frames[-1])
         print(f"[输出] {len(frames)} 帧 -> {video_path}")
 
 

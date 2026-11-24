@@ -24,6 +24,7 @@ class BCPolicyNet(nn.Module):
     """10 维观测 → 3 维动作的小 MLP"""
 
     def __init__(self, obs_dim=10, act_dim=3, hidden=256):
+        """构建两层隐藏层的 MLP，并把动作限制到环境要求的一倍范围内。"""
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(obs_dim, hidden), nn.ReLU(),
@@ -32,6 +33,7 @@ class BCPolicyNet(nn.Module):
         )
 
     def forward(self, x):
+        """把观测张量映射成范围为 ``[-1, 1]`` 的归一化动作。"""
         return self.net(x)
 
 
@@ -39,16 +41,19 @@ class BCPolicy:
     """包装成和 stable-baselines3 一样的 predict() 接口，方便和 PPO 用同一套评测代码"""
 
     def __init__(self, net):
+        """保存已经构建或训练完成的网络。"""
         self.net = net
 
     @classmethod
     def load(cls, path):
+        """从 ``state_dict`` 文件加载网络并切换到推理模式。"""
         net = BCPolicyNet()
         net.load_state_dict(torch.load(path, map_location="cpu"))
         net.eval()
         return cls(net)
 
     def predict(self, obs, deterministic=True):
+        """按 stable-baselines3 的返回格式执行一次无梯度前向。"""
         with torch.no_grad():
             action = self.net(torch.as_tensor(np.asarray(obs), dtype=torch.float32))
         return action.numpy(), None

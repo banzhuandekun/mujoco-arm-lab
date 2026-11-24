@@ -14,7 +14,7 @@
 所以这里设了单目标超时（8 s 仿真时间），超时就换下一个。
 
 运行：
-    .\\.venv\\Scripts\\python.exe 03_interactive_viewer.py
+    .\\.venv\\Scripts\\python.exe scripts\\03_interactive_viewer.py
 """
 
 import time
@@ -23,13 +23,14 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 
-from arm_control import IK_EVERY, TOL, Reacher, sample_target
+from mujoco_arm_lab.control import IK_EVERY, TOL, Reacher, sample_target
 
 HOLD_STEPS = 250            # 够到目标后停 250 步 = 0.5 s，再换下一个目标
 TARGET_TIMEOUT_STEPS = 4000  # 单个目标最多尝试 8 s 仿真时间，超时就换下一个
 
 
 def main():
+    """打开被动渲染窗口，连续运行随机目标到达任务直到用户关窗。"""
     rng = np.random.default_rng()
     reacher = Reacher()
     model, data = reacher.model, reacher.data
